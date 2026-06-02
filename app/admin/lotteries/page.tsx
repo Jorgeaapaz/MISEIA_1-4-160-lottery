@@ -12,13 +12,102 @@ function fmtDate(d: Date | string) {
   return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+interface DrawResult {
+  lotteryName: string
+  winningNumber: number
+  winners: { userId: string; email: string; prizeAmount: number }[]
+}
+
+function DrawResultModal({ result, onClose }: { result: DrawResult; onClose: () => void }) {
+  const hasWinners = result.winners.length > 0
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(10,8,20,0.82)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1rem',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="card animate-fade-up"
+        style={{ maxWidth: 480, width: '100%', padding: '2.5rem 2rem', textAlign: 'center' }}
+      >
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+          {hasWinners ? '🏆' : '🎲'}
+        </div>
+
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', marginBottom: '0.4rem' }}>
+          Resultado del sorteo
+        </h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.75rem' }}>
+          {result.lotteryName}
+        </p>
+
+        <div style={{
+          background: 'rgba(201,168,76,0.08)',
+          border: '1px solid rgba(201,168,76,0.25)',
+          borderRadius: 'var(--radius)',
+          padding: '1.25rem',
+          marginBottom: '1.75rem',
+        }}>
+          <div style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.4rem' }}>
+            Número ganador
+          </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 700, color: 'var(--gold-hi)', lineHeight: 1 }}>
+            {result.winningNumber}
+          </div>
+        </div>
+
+        {hasWinners ? (
+          <div style={{ marginBottom: '1.75rem', textAlign: 'left' }}>
+            <p style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+              {result.winners.length === 1 ? 'Ganador' : `Ganadores (${result.winners.length})`}
+            </p>
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              {result.winners.map((w) => (
+                <div key={w.userId} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0.65rem 0.9rem',
+                  background: 'rgba(201,168,76,0.07)',
+                  border: '1px solid rgba(201,168,76,0.2)',
+                  borderRadius: 'var(--radius-sm)',
+                  gap: '0.75rem',
+                }}>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {w.email}
+                  </span>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--gold-hi)', fontWeight: 600, flexShrink: 0 }}>
+                    {fmtCents(w.prizeAmount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.75rem', fontSize: '0.92rem' }}>
+            Ningún boleto coincide con el número ganador.
+          </p>
+        )}
+
+        <button onClick={onClose} className="btn btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
+          Cerrar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminLotteriesPage() {
-  const { user, token } = useGlobal()
+  const { user, token, isLoading: authLoading } = useGlobal()
   const router = useRouter()
   const [lotteries, setLotteries] = useState<LotteryPublic[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [drawLoading, setDrawLoading] = useState<string | null>(null)
+  const [drawResult, setDrawResult] = useState<DrawResult | null>(null)
 
   // Form state
   const [name, setName] = useState('')
@@ -38,10 +127,11 @@ export default function AdminLotteriesPage() {
   }, [])
 
   useEffect(() => {
+    if (authLoading) return
     if (!user) { router.push('/login'); return }
     if (user.role !== 'admin') { router.push('/'); return }
     fetchLotteries()
-  }, [user, router, fetchLotteries])
+  }, [user, router, fetchLotteries, authLoading])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -70,7 +160,7 @@ export default function AdminLotteriesPage() {
     fetchLotteries()
   }
 
-  async function handleDraw(id: string) {
+  async function handleDraw(id: string, lotteryName: string) {
     if (!confirm('¿Confirmar la ejecución del sorteo? Esta acción es irreversible.')) return
     setDrawLoading(id)
     const res = await fetch(`/api/lotteries/${id}/draw`, {
@@ -80,13 +170,17 @@ export default function AdminLotteriesPage() {
     const data = await res.json()
     setDrawLoading(null)
     if (!res.ok) { alert(data.error); return }
-    alert(`Sorteo realizado. Número ganador: ${data.winningNumber}. Ganadores: ${data.winners.length}`)
+    setDrawResult({ lotteryName, winningNumber: data.winningNumber, winners: data.winners })
     fetchLotteries()
   }
 
   if (!user || user.role !== 'admin') return null
 
   return (
+    <>
+      {drawResult && (
+        <DrawResultModal result={drawResult} onClose={() => setDrawResult(null)} />
+      )}
     <div className="page-container">
       <div className="animate-fade-up">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -182,7 +276,7 @@ export default function AdminLotteriesPage() {
                     <td style={{ padding: '0.875rem 1rem' }}>
                       {l.status === 'active' && (
                         <button
-                          onClick={() => handleDraw(l.id)}
+                          onClick={() => handleDraw(l.id, l.name)}
                           disabled={drawLoading === l.id}
                           className="btn btn-gold"
                           style={{ padding: '0.3rem 0.85rem', fontSize: '0.8rem' }}
@@ -199,5 +293,6 @@ export default function AdminLotteriesPage() {
         )}
       </div>
     </div>
+    </>
   )
 }

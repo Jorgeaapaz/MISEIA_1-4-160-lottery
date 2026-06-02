@@ -21,17 +21,25 @@ export async function GET(request: NextRequest) {
       .find({ _id: { $in: lotteryIds.map((id) => new ObjectId(id)) } })
       .toArray()
 
-    const lotteryMap = Object.fromEntries(lotteries.map((l) => [l._id!.toString(), l.name]))
+    const lotteryMap = Object.fromEntries(
+      lotteries.map((l) => [l._id!.toString(), l])
+    )
 
     return Response.json(
-      tickets.map((t) => ({
-        id: t._id!.toString(),
-        lotteryId: t.lotteryId.toString(),
-        lotteryName: lotteryMap[t.lotteryId.toString()] || 'Lotería',
-        numbers: t.numbers,
-        purchaseDate: t.purchaseDate,
-        status: t.status,
-      }))
+      tickets.map((t) => {
+        const lottery = lotteryMap[t.lotteryId.toString()]
+        return {
+          id: t._id!.toString(),
+          lotteryId: t.lotteryId.toString(),
+          lotteryName: lottery?.name ?? 'Lotería',
+          lotteryStatus: lottery?.status ?? 'unknown',
+          lotteryEndDate: lottery?.endDate ?? null,
+          lotteryPrizeAmount: lottery?.prizeAmount ?? 0,
+          numbers: t.numbers,
+          purchaseDate: t.purchaseDate,
+          status: t.status,
+        }
+      })
     )
   } catch (err) {
     if (err instanceof Error && err.message === 'Unauthorized') {

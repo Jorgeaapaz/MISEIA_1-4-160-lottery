@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useGlobal } from '@/context/GlobalContext'
 
 export default function ProfilePage() {
-  const { user, token, login } = useGlobal()
+  const { user, token, login, isLoading: authLoading } = useGlobal()
   const router = useRouter()
 
   const [name, setName] = useState('')
@@ -18,6 +18,7 @@ export default function ProfilePage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (authLoading) return
     if (!user) { router.push('/login'); return }
     setName(user.name)
     if (user.bankAccount) {
@@ -26,7 +27,7 @@ export default function ProfilePage() {
       setAccountNumber(user.bankAccount.accountNumber)
       setBankCode(user.bankAccount.bankCode)
     }
-  }, [user, router])
+  }, [user, router, authLoading])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -49,7 +50,7 @@ export default function ProfilePage() {
     setSuccess(true)
   }
 
-  if (!user) return null
+  if (authLoading || !user) return null
 
   return (
     <div className="page-container" style={{ maxWidth: 640 }}>

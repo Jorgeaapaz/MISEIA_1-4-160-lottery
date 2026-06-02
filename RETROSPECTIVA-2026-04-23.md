@@ -221,6 +221,23 @@ El script `npm run seed` crea:
 
 ---
 
+## Tarjetas de prueba Stripe / Stripe Test Cards
+
+Estas tarjetas solo funcionan con las API keys de prueba (sandbox). Usar cualquier fecha futura como vencimiento y cualquier valor en los demas campos del formulario.
+
+| Marca | Numero | CVC | Vencimiento |
+|-------|--------|-----|-------------|
+| Visa | 4242 4242 4242 4242 | Any 3 digits | Any future date |
+| Visa (debit) | 4000 0566 5566 5556 | Any 3 digits | Any future date |
+| Mastercard | 5555 5555 5555 4444 | Any 3 digits | Any future date |
+| Mastercard (2-series) | 2223 0031 2200 3222 | Any 3 digits | Any future date |
+| Mastercard (debit) | 5200 8282 8282 8210 | Any 3 digits | Any future date |
+| American Express | 3782 822463 10005 | Any 4 digits | Any future date |
+| Discover | 6011 1111 1111 1117 | Any 3 digits | Any future date |
+| Diners Club | 3056 9300 0902 0004 | Any 3 digits | Any future date |
+| JCB | 3566 0020 2036 0505 | Any 3 digits | Any future date |
+| UnionPay | 6200 0000 0000 0005 | Any 3 digits | Any future date |
+
 ## Estructura de archivos creada / File Structure
 
 ```
@@ -383,3 +400,123 @@ Servicios locales requeridos:
 ---
 
 *Generado con `/session-retrospective` · LoteriApp · 2026-04-23*
+
+---
+
+# Retrospectiva de Sesión — 2026-06-02
+### Correcciones de bugs, números vendidos bloqueados y mejoras de UX en el panel admin
+
+---
+
+## Resumen / Overview
+
+Sesión de corrección de bugs y mejoras de funcionalidad sobre la aplicación de lotería ya implementada. Se resolvieron cuatro problemas detectados durante pruebas manuales de los flujos principales.
+
+**Cambios aplicados:**
+1. Claves Stripe en `.env.local` — reemplazadas con las reales del proyecto ecommerce hermano.
+2. Bug de race condition en autenticación — el `useEffect` de las páginas protegidas redirigía a `/login` antes de que `GlobalContext` cargara el estado desde `localStorage`.
+3. Números ya vendidos — se deshabilitan visualmente en el selector de números del detalle de sorteo.
+4. Dashboard agrupado por sorteo — los boletos se muestran agrupados bajo su sorteo correspondiente.
+5. Modal de resultado del sorteo — reemplaza el `alert()` nativo con un popup estilizado que muestra el número ganador y los ganadores.
+
+**Resultado:** ✅ Todos los flujos probados manualmente sin errores.
+
+---
+
+## Problemas encontrados / Problems & Solutions
+
+| Problema | Solución |
+|----------|----------|
+| Error 401 al cargar Stripe Elements (`merchant-ui-api.stripe.com`) | Las claves en `.env.local` eran placeholders (`pk_test_your_key_here`). Se copiaron las claves reales desde el proyecto ecommerce (`D:\Master-IA-Dev\04-Bloque4\1-4-110-ecommerce\ecommerce\.env.local`). |
+| El botón "Ver mis boletos" redirigía a `/login` tras comprar un boleto | `GlobalContext` inicializa con `user: null` e `isLoading: true`. El `useEffect` de `DashboardPage` disparaba `router.push('/login')` en el primer render antes de que el contexto hidratara desde `localStorage`. Fix: añadir `if (authLoading) return` al inicio del `useEffect` y actualizar el guard de render a `if (authLoading \|\| !user) return null`. |
+| El mismo race condition existía en otras páginas protegidas | Se aplicó el mismo fix a `profile/page.tsx`, `admin/lotteries/page.tsx` y `admin/payments/page.tsx`. |
+| Los números ya comprados por otros usuarios podían volver a comprarse | No había validación de números tomados. Se resolvió en tres capas: (1) server page pasa `soldNumbers[]` al componente cliente, (2) el picker deshabilita esos botones, (3) el endpoint de checkout rechaza números ya existentes en la colección `tickets`. |
+| El dashboard mostraba una lista plana de boletos sin contexto del sorteo | Se agruparon los tickets por `lotteryId`. La API `/api/users/tickets` ahora devuelve `lotteryStatus`, `lotteryEndDate` y `lotteryPrizeAmount` para construir un card por sorteo con sus boletos anidados. |
+| El resultado del sorteo se mostraba con `alert()` nativo del navegador | Se reemplazó con un modal React con overlay, mostrando el número ganador en formato destacado, la lista de ganadores con email y premio, o un mensaje de "sin ganadores". Se cierra con el botón "Cerrar" o haciendo clic fuera. |
+
+---
+
+## Archivos modificados / Modified Files
+
+| Archivo | Cambio |
+|---------|--------|
+| `.env.local` | Claves Stripe reales (`STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLIC_KEY`, `STRIPE_WEBHOOK_SECRET`) |
+| `app/dashboard/page.tsx` | Guard `authLoading`, vista agrupada por sorteo con `lotteryStatus`/`lotteryEndDate`/`lotteryPrizeAmount` |
+| `app/profile/page.tsx` | Guard `authLoading` en `useEffect` y `return null` |
+| `app/admin/lotteries/page.tsx` | Guard `authLoading`, modal `DrawResultModal`, reemplaza `alert()` en `handleDraw` |
+| `app/admin/payments/page.tsx` | Guard `authLoading` en `useEffect` |
+| `app/lotteries/[id]/page.tsx` | Consulta `tickets` para construir `soldNumbers[]` y pasarlo a `LotteryDetail` |
+| `app/lotteries/[id]/LotteryDetail.tsx` | Deshabilita botones de números vendidos (visualmente + `disabled`) |
+| `app/api/lotteries/[id]/tickets/checkout/route.ts` | Validación server-side: rechaza si el número ya existe en `tickets` para ese sorteo |
+| `app/api/users/tickets/route.ts` | Devuelve `lotteryStatus`, `lotteryEndDate`, `lotteryPrizeAmount` por ticket |
+
+---
+
+## Detalle técnico — Race condition de autenticación
+
+El patrón buggy era:
+
+```tsx
+// ❌ ANTES — user es null en el primer render aunque el usuario esté logueado
+useEffect(() => {
+  if (!user) { router.push('/login'); return }
+  // ...
+}, [user])
+```
+
+El fix correcto:
+
+```tsx
+// ✅ DESPUÉS — esperar a que GlobalContext cargue desde localStorage
+const { user, token, isLoading: authLoading } = useGlobal()
+
+useEffect(() => {
+  if (authLoading) return           // esperar hidratación
+  if (!user) { router.push('/login'); return }
+  // ...
+}, [user, token, router, authLoading])
+
+if (authLoading || !user) return null  // evitar flash de contenido
+```
+
+---
+
+## Detalle técnico — Números vendidos
+
+**Flujo de datos:**
+
+```
+app/lotteries/[id]/page.tsx (Server Component)
+  → consulta tickets collection: { lotteryId: id }
+  → extrae soldNumbers = [...new Set(tickets.flatMap(t => t.numbers))]
+  → pasa soldNumbers[] a <LotteryDetail lottery={{ ...data, soldNumbers }} />
+
+LotteryDetail.tsx (Client Component)
+  → const soldSet = new Set(lottery.soldNumbers)
+  → por cada número: disabled={soldSet.has(i)}, cursor: not-allowed, line-through
+
+checkout/route.ts (API)
+  → db.tickets.findOne({ lotteryId, numbers: { $in: numbers } })
+  → si existe → 400 "One or more numbers already taken"
+```
+
+---
+
+## Resultados y conclusiones / Results & Conclusions
+
+**Funcionó correctamente:**
+- ✅ Compra de boleto → redirección a dashboard funciona sin pasar por login
+- ✅ Números ya comprados aparecen tachados y no son seleccionables
+- ✅ Dashboard agrupa boletos bajo el sorteo correspondiente con estado y fecha
+- ✅ Modal de sorteo muestra resultado completo sin usar `alert()` nativo
+
+**Pendiente para próximas sesiones:**
+- [ ] Configurar Stripe webhook real con `stripe listen` para marcar pagos como completados
+- [ ] Incrementar `totalTicketsSold` en la colección `lotteries` al confirmar pago (actualmente se crea el ticket antes de confirmar el pago Stripe)
+- [ ] Añadir pruebas Playwright para los flujos: login, compra, sorteo, dashboard
+- [ ] Rate limiting en `/api/auth/request-magiclink`
+- [ ] Validación IBAN real
+
+---
+
+*Generado con `/session-retrospective` · LoteriApp · 2026-06-02*

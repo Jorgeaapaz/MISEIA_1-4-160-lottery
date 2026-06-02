@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb'
 import { notFound } from 'next/navigation'
 import { getDb } from '@/lib/db'
-import { Lottery } from '@/lib/types'
+import { Lottery, Ticket } from '@/lib/types'
 import LotteryDetail from './LotteryDetail'
 
 function fmtCents(cents: number) {
@@ -31,6 +31,14 @@ export default async function LotteryPage({
 
   if (!lottery) notFound()
 
+  const soldTickets = await db
+    .collection<Ticket>('tickets')
+    .find({ lotteryId: new ObjectId(id) })
+    .project<{ numbers: number[] }>({ numbers: 1 })
+    .toArray()
+
+  const soldNumbers = [...new Set(soldTickets.flatMap((t) => t.numbers))]
+
   const lotteryData = {
     id: lottery._id!.toString(),
     name: lottery.name,
@@ -44,6 +52,7 @@ export default async function LotteryPage({
     totalTicketsSold: lottery.totalTicketsSold,
     winningNumber: lottery.winningNumber,
     endDateFormatted: fmtDate(lottery.endDate),
+    soldNumbers,
   }
 
   return <LotteryDetail lottery={lotteryData} />

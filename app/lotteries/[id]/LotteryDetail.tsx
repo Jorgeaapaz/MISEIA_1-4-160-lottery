@@ -21,6 +21,7 @@ interface LotteryData {
   totalTicketsSold: number
   winningNumber: number | null
   endDateFormatted: string
+  soldNumbers: number[]
 }
 
 function CheckoutForm({ lotteryId, selectedNumber, amount, onSuccess }: {
@@ -97,6 +98,7 @@ function CheckoutForm({ lotteryId, selectedNumber, amount, onSuccess }: {
 }
 
 export default function LotteryDetail({ lottery }: { lottery: LotteryData }) {
+  const soldSet = new Set(lottery.soldNumbers)
   const { user, token } = useGlobal()
   const router = useRouter()
   const [selected, setSelected] = useState<number | null>(null)
@@ -221,25 +223,44 @@ export default function LotteryDetail({ lottery }: { lottery: LotteryData }) {
                 overflowY: 'auto',
                 marginBottom: '1.25rem',
               }}>
-                {Array.from({ length: lottery.numberOfNumbers }, (_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelected(i)}
-                    style={{
-                      aspectRatio: '1',
-                      borderRadius: '8px',
-                      border: selected === i ? '2px solid var(--accent)' : '1px solid var(--border)',
-                      background: selected === i ? 'rgba(124,58,237,0.2)' : 'var(--surface-2)',
-                      color: selected === i ? 'var(--accent-hi)' : 'var(--text)',
-                      fontSize: '0.82rem',
-                      fontWeight: selected === i ? 700 : 400,
-                      cursor: 'pointer',
-                      transition: 'all 0.12s ease',
-                    }}
-                  >
-                    {i}
-                  </button>
-                ))}
+                {Array.from({ length: lottery.numberOfNumbers }, (_, i) => {
+                  const isSold = soldSet.has(i)
+                  const isSelected = selected === i
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => !isSold && setSelected(i)}
+                      disabled={isSold}
+                      title={isSold ? 'Número ya vendido' : undefined}
+                      style={{
+                        aspectRatio: '1',
+                        borderRadius: '8px',
+                        border: isSelected
+                          ? '2px solid var(--accent)'
+                          : isSold
+                          ? '1px solid rgba(100,100,120,0.2)'
+                          : '1px solid var(--border)',
+                        background: isSelected
+                          ? 'rgba(124,58,237,0.2)'
+                          : isSold
+                          ? 'rgba(60,60,80,0.25)'
+                          : 'var(--surface-2)',
+                        color: isSelected
+                          ? 'var(--accent-hi)'
+                          : isSold
+                          ? 'rgba(140,132,158,0.4)'
+                          : 'var(--text)',
+                        fontSize: '0.82rem',
+                        fontWeight: isSelected ? 700 : 400,
+                        cursor: isSold ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.12s ease',
+                        textDecoration: isSold ? 'line-through' : 'none',
+                      }}
+                    >
+                      {i}
+                    </button>
+                  )
+                })}
               </div>
 
               {selected !== null && (

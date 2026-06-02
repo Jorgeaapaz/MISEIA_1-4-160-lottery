@@ -43,6 +43,15 @@ export async function POST(
       }
     }
 
+    // Check if any selected number is already taken
+    const takenTicket = await db
+      .collection<Ticket>('tickets')
+      .findOne({ lotteryId: new ObjectId(id), numbers: { $in: numbers } })
+
+    if (takenTicket) {
+      return Response.json({ error: 'One or more numbers already taken' }, { status: 400 })
+    }
+
     // Check user has bank account
     const user = await db
       .collection<User>('users')

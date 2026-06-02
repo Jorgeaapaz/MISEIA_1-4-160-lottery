@@ -24,7 +24,7 @@ function fmtDate(d: string | null) {
 }
 
 export default function AdminPaymentsPage() {
-  const { user, token } = useGlobal()
+  const { user, token, isLoading: authLoading } = useGlobal()
   const router = useRouter()
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,10 +38,11 @@ export default function AdminPaymentsPage() {
   }, [token])
 
   useEffect(() => {
+    if (authLoading) return
     if (!user) { router.push('/login'); return }
     if (user.role !== 'admin') { router.push('/'); return }
     fetchTransfers()
-  }, [user, router, fetchTransfers])
+  }, [user, router, fetchTransfers, authLoading])
 
   async function handleTransfer(id: string) {
     if (!confirm('¿Confirmar la transferencia bancaria?')) return
