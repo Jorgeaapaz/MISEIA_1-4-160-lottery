@@ -41,6 +41,7 @@ export default function AdminPaymentsPage() {
     if (authLoading) return
     if (!user) { router.push('/login'); return }
     if (user.role !== 'admin') { router.push('/'); return }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTransfers()
   }, [user, router, fetchTransfers, authLoading])
 

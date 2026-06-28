@@ -20,6 +20,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (authLoading) return
     if (!user) { router.push('/login'); return }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setName(user.name)
     if (user.bankAccount) {
       setIban(user.bankAccount.iban)

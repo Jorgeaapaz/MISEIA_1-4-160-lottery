@@ -130,6 +130,7 @@ export default function AdminLotteriesPage() {
     if (authLoading) return
     if (!user) { router.push('/login'); return }
     if (user.role !== 'admin') { router.push('/'); return }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLotteries()
   }, [user, router, fetchLotteries, authLoading])
 

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useGlobal } from '@/context/GlobalContext'
 import { loadStripe } from '@stripe/stripe-js'
@@ -99,14 +100,17 @@ function CheckoutForm({ lotteryId, selectedNumber, amount, onSuccess }: {
 
 export default function LotteryDetail({ lottery }: { lottery: LotteryData }) {
   const soldSet = new Set(lottery.soldNumbers)
-  const { user, token } = useGlobal()
+  const { user } = useGlobal()
   const router = useRouter()
   const [selected, setSelected] = useState<number | null>(null)
   const [showPayment, setShowPayment] = useState(false)
   const [paid, setPaid] = useState(false)
 
-  const tenMinBefore = new Date(lottery.endDate).getTime() - 10 * 60 * 1000
-  const isClosed = lottery.status !== 'active' || Date.now() >= tenMinBefore
+  const isClosed = useMemo(() => {
+    const tenMinBefore = new Date(lottery.endDate).getTime() - 10 * 60 * 1000
+    // eslint-disable-next-line react-hooks/purity
+    return lottery.status !== 'active' || Date.now() >= tenMinBefore
+  }, [lottery.endDate, lottery.status])
 
   function handleBuy() {
     if (!user) { router.push('/login'); return }
@@ -140,9 +144,9 @@ export default function LotteryDetail({ lottery }: { lottery: LotteryData }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', alignItems: 'start' }}>
         {/* Left: info */}
         <div className="animate-fade-up">
-          <a href="/lotteries" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'inline-flex', gap: '0.35rem', marginBottom: '1.5rem' }}>
+          <Link href="/lotteries" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'inline-flex', gap: '0.35rem', marginBottom: '1.5rem' }}>
             ← Volver a sorteos
-          </a>
+          </Link>
 
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.4rem', marginBottom: '0.75rem' }}>
             {lottery.name}

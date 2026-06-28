@@ -41,7 +41,6 @@ describe('GET /api/lotteries', () => {
   })
 
   it('returns 200 with list of lotteries', async () => {
-    const req = new Request('http://localhost/api/lotteries')
     const res = await getLotteries()
     expect(res.status).toBe(200)
     const body = await res.json()
