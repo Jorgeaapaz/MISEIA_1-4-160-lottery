@@ -26,7 +26,6 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       try {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setToken(savedToken)
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setUser(JSON.parse(savedUser))
       } catch {
         localStorage.removeItem('auth_token')
