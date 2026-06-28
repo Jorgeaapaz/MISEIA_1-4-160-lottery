@@ -15,6 +15,7 @@ const config: Config = {
     '!**/*.d.ts',
   ],
   coverageThreshold: {
+    global: {},
     './lib/': {
       lines: 60,
     },
