@@ -53,37 +53,17 @@ deploy:
     - mkdir -p ~/.ssh
     - echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
     - chmod 600 ~/.ssh/deploy_key
-    - ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
+    - ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
   script:
-    - |
-      ssh -i ~/.ssh/deploy_key ${VM_USER}@${VM_HOST} << 'ENDSSH'
-        set -e
-        DEPLOY_DIR=~/MISEIA1-4-160-lottery
-
-        if [ -d "$DEPLOY_DIR/.git" ]; then
-          cd $DEPLOY_DIR && git pull origin master
-        else
-          mkdir -p $DEPLOY_DIR
-          git clone https://gitlab.codecrypto.academy/Jorgeaapaz/MISEIA_1-4-160-lottery.git $DEPLOY_DIR
-          cd $DEPLOY_DIR
-        fi
-
-        cat > .env << ENVEOF
-      MONGODB_URI=${MONGODB_URI}
-      MONGODB_DB=lottery_db
-      JWT_SECRET=${JWT_SECRET}
-      STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}
-      STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      NEXT_PUBLIC_STRIPE_PUBLIC_KEY=${NEXT_PUBLIC_STRIPE_PUBLIC_KEY}
-      MAILHOG_HOST=mailhog
-      MAIL_PORT=1025
-      NEXT_PUBLIC_API_URL=https://lottery.deviaaps.com
-      ENVEOF
-
-        docker compose -f docker-compose.prod.yml up -d --build
-        echo "Deployed: https://lottery.deviaaps.com"
-      ENDSSH
+    - >
+      ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no
+      ${VM_USER}@${VM_HOST}
+      "set -e;
+      DEPLOY_DIR=\$HOME/MISEIA1-4-160-lottery;
+      if [ -d \"\$DEPLOY_DIR/.git\" ]; then cd \$DEPLOY_DIR && git pull origin master; else git clone https://gitlab.codecrypto.academy/jorgeaapaz/MISEIA_1-4-160-lottery.git \$DEPLOY_DIR && cd \$DEPLOY_DIR; fi;
+      printf 'MONGODB_URI=${MONGODB_URI}\nMONGODB_DB=lottery_db\nJWT_SECRET=${JWT_SECRET}\nSTRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}\nSTRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}\nNEXT_PUBLIC_STRIPE_PUBLIC_KEY=${NEXT_PUBLIC_STRIPE_PUBLIC_KEY}\nMAILHOG_HOST=mailhog\nMAIL_PORT=1025\nNEXT_PUBLIC_API_URL=https://lottery.deviaaps.com\n' > \$DEPLOY_DIR/env.production;
+      cd \$DEPLOY_DIR && docker compose -f docker-compose.prod.yml up -d --build;
+      echo Deployed"
   environment:
     name: production
     url: https://lottery.deviaaps.com
