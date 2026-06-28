@@ -419,3 +419,24 @@ npm run test:coverage
 ```
 
 Coverage target: >60% lines on `lib/` (domain code).
+
+
+## Updates — 2026-06-27
+
+- Added .env.example with all required environment variables and safe placeholders
+- Added Jest test suite (__tests__/) with 20 tests covering auth helpers and API routes; 
+pm test and 
+pm run test:coverage scripts now available
+- Added jest.config.ts with coverage thresholds (>60% on lib/)
+- Added multi-stage Dockerfile with standalone Next.js output
+- Added docker-compose.prod.yml for deployment to GCI VM via Traefik (lottery.deviaaps.com)
+- Added .github/workflows/ci-cd.yml — GitHub Actions CI/CD (test ? lint ? deploy to VM)
+- Added .gitlab-ci.yml — GitLab CI/CD pipeline (test ? build ? deploy)
+- Added Architecture section with 3 Mermaid diagrams (component, auth flow, purchase flow)
+- Added ## AI-Assisted Development section documenting human corrections to AI-generated code
+- Added docs/decisions/ with 4 ADRs (MongoDB singleton, magic links, Server Components, webhook state machine)
+- Added ## Technical Benchmarks section with quantitative justifications for key decisions
+- Added ## Deploy to Production section with step-by-step VM deploy instructions
+- Set output: 'standalone' in 
+ext.config.ts for Docker builds
+- Added docs/compliance/ with compliance report, PERT plan, and 11 disciplined prompt files
