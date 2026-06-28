@@ -55,15 +55,15 @@ deploy:
     - chmod 600 ~/.ssh/deploy_key
     - ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
   script:
-    - >
-      ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no
-      ${VM_USER}@${VM_HOST}
-      "set -e;
-      DEPLOY_DIR=\$HOME/MISEIA1-4-160-lottery;
-      if [ -d \"\$DEPLOY_DIR/.git\" ]; then cd \$DEPLOY_DIR && git pull origin master; else git clone https://gitlab.codecrypto.academy/jorgeaapaz/MISEIA_1-4-160-lottery.git \$DEPLOY_DIR && cd \$DEPLOY_DIR; fi;
-      printf 'MONGODB_URI=${MONGODB_URI}\nMONGODB_DB=lottery_db\nJWT_SECRET=${JWT_SECRET}\nSTRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}\nSTRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}\nNEXT_PUBLIC_STRIPE_PUBLIC_KEY=${NEXT_PUBLIC_STRIPE_PUBLIC_KEY}\nMAILHOG_HOST=mailhog\nMAIL_PORT=1025\nNEXT_PUBLIC_API_URL=https://lottery.deviaaps.com\n' > \$DEPLOY_DIR/env.production;
-      cd \$DEPLOY_DIR && docker compose -f docker-compose.prod.yml up -d --build;
-      echo Deployed"
+    - echo "Connecting to $VM_USER @ $VM_HOST"
+    - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -l "$VM_USER" "$VM_HOST"
+      "set -e &&
+      DEPLOY_DIR=\$HOME/MISEIA1-4-160-lottery &&
+      ([ -d \"\$DEPLOY_DIR/.git\" ] && (cd \$DEPLOY_DIR && git pull origin master) || (git clone https://gitlab.codecrypto.academy/jorgeaapaz/MISEIA_1-4-160-lottery.git \$DEPLOY_DIR && cd \$DEPLOY_DIR)) &&
+      cd \$DEPLOY_DIR &&
+      printf 'MONGODB_URI=$MONGODB_URI\nMONGODB_DB=lottery_db\nJWT_SECRET=$JWT_SECRET\nSTRIPE_SECRET_KEY=$STRIPE_SECRET_KEY\nSTRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET\nNEXT_PUBLIC_STRIPE_PUBLIC_KEY=$NEXT_PUBLIC_STRIPE_PUBLIC_KEY\nMAILHOG_HOST=mailhog\nMAIL_PORT=1025\nNEXT_PUBLIC_API_URL=https://lottery.deviaaps.com\n' > env.production &&
+      docker compose -f docker-compose.prod.yml up -d --build &&
+      echo Deployed-OK"
   environment:
     name: production
     url: https://lottery.deviaaps.com
