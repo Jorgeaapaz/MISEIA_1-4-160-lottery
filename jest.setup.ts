@@ -1,0 +1,6 @@
+process.env.JWT_SECRET = 'test-secret-for-jest-min-32-chars-long-ok'
+process.env.MONGODB_URI = 'mongodb://localhost:27017'
+process.env.MONGODB_DB = 'lottery_test'
+process.env.MAILHOG_HOST = 'localhost'
+process.env.MAIL_PORT = '1027'
+process.env.NEXT_PUBLIC_API_URL = 'http://localhost:3000'

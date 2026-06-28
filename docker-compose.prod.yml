@@ -1,0 +1,24 @@
+networks:
+  miseia-net:
+    external: true
+
+services:
+  lottery-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lottery-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "30001:3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lottery.rule=Host(`lottery.deviaaps.com`)"
+      - "traefik.http.routers.lottery.entrypoints=websecure"
+      - "traefik.http.routers.lottery.tls=true"
+      - "traefik.http.routers.lottery.tls.certresolver=cloudflare"
+      - "traefik.http.services.lottery.loadbalancer.server.port=3000"
+    networks:
+      - miseia-net

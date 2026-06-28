@@ -1,0 +1,91 @@
+stages:
+  - test
+  - build
+  - deploy
+
+# ── Test Stage ────────────────────────────────────────────────────────────────
+test:
+  stage: test
+  image: node:20-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+  script:
+    - npm ci
+    - npm run lint
+    - npm test
+  variables:
+    JWT_SECRET: $JWT_SECRET
+    MONGODB_URI: "mongodb://localhost:27017"
+    MONGODB_DB: "lottery_test"
+    MAILHOG_HOST: "localhost"
+    MAIL_PORT: "1027"
+    NEXT_PUBLIC_API_URL: "http://localhost:3000"
+  only:
+    - master
+    - merge_requests
+
+# ── Build Stage ───────────────────────────────────────────────────────────────
+build:
+  stage: build
+  image: node:20-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+  script:
+    - npm ci
+    - NODE_ENV=production npm run build
+  artifacts:
+    paths:
+      - .next/
+    expire_in: 1 hour
+  only:
+    - master
+
+# ── Deploy Stage ──────────────────────────────────────────────────────────────
+deploy:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client git
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+    - chmod 600 ~/.ssh/deploy_key
+    - ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh -i ~/.ssh/deploy_key ${VM_USER}@${VM_HOST} << 'ENDSSH'
+        set -e
+        DEPLOY_DIR=~/MISEIA1-4-160-lottery
+
+        if [ -d "$DEPLOY_DIR/.git" ]; then
+          cd $DEPLOY_DIR && git pull origin master
+        else
+          mkdir -p $DEPLOY_DIR
+          git clone https://gitlab.codecrypto.academy/Jorgeaapaz/MISEIA_1-4-160-lottery.git $DEPLOY_DIR
+          cd $DEPLOY_DIR
+        fi
+
+        cat > .env << ENVEOF
+      MONGODB_URI=${MONGODB_URI}
+      MONGODB_DB=lottery_db
+      JWT_SECRET=${JWT_SECRET}
+      STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}
+      STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      NEXT_PUBLIC_STRIPE_PUBLIC_KEY=${NEXT_PUBLIC_STRIPE_PUBLIC_KEY}
+      MAILHOG_HOST=mailhog
+      MAIL_PORT=1025
+      NEXT_PUBLIC_API_URL=https://lottery.deviaaps.com
+      ENVEOF
+
+        docker compose -f docker-compose.prod.yml up -d --build
+        echo "Deployed: https://lottery.deviaaps.com"
+      ENDSSH
+  environment:
+    name: production
+    url: https://lottery.deviaaps.com
+  only:
+    - master

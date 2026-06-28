@@ -1,0 +1,92 @@
+name: CI/CD — Test, Build & Deploy
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MONGODB_URI: mongodb://localhost:27017
+          MONGODB_DB: lottery_test
+          MAILHOG_HOST: localhost
+          MAIL_PORT: 1027
+          NEXT_PUBLIC_API_URL: http://localhost:3000
+
+  build-and-deploy:
+    name: Build & Deploy to GCI VM
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to VM
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'ENDSSH'
+            set -e
+            DEPLOY_DIR=~/MISEIA1-4-160-lottery
+
+            # Clone or pull latest code
+            if [ -d "$DEPLOY_DIR/.git" ]; then
+              cd $DEPLOY_DIR
+              git pull origin master
+            else
+              mkdir -p $DEPLOY_DIR
+              git clone https://github.com/Jorgeaapaz/MISEIA_1-4-160-lottery.git $DEPLOY_DIR
+              cd $DEPLOY_DIR
+            fi
+
+            # Write production env from GitHub secrets
+            cat > .env << 'ENVEOF'
+          MONGODB_URI=${{ secrets.MONGODB_URI }}
+          MONGODB_DB=lottery_db
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          STRIPE_PUBLIC_KEY=${{ secrets.STRIPE_PUBLIC_KEY }}
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          NEXT_PUBLIC_STRIPE_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLIC_KEY }}
+          MAILHOG_HOST=mailhog
+          MAIL_PORT=1025
+          NEXT_PUBLIC_API_URL=https://lottery.deviaaps.com
+          NODE_ENV=production
+          ENVEOF
+
+            # Build and restart
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            echo "Deployment complete. App: https://lottery.deviaaps.com"
+          ENDSSH
