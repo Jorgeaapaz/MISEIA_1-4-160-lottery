@@ -12,7 +12,7 @@ services:
     env_file:
       - .env
     ports:
-      - "30001:3000"
+      - "30005:3000"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.lottery.rule=Host(`lottery.deviaaps.com`)"
