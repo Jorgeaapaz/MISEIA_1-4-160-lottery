@@ -4,6 +4,8 @@ import { getDb } from '@/lib/db'
 import { Lottery, Ticket } from '@/lib/types'
 import LotteryDetail from './LotteryDetail'
 
+export const dynamic = 'force-dynamic'
+
 function fmtCents(cents: number) {
   return (cents / 100).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
 }

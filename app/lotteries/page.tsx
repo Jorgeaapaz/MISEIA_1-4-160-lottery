@@ -3,6 +3,8 @@ import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/db'
 import { Lottery, Ticket } from '@/lib/types'
 
+export const dynamic = 'force-dynamic'
+
 function fmtCents(cents: number) {
   return (cents / 100).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
 }
