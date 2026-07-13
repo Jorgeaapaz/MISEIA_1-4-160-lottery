@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server'
-import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/db'
 import { getStripe } from '@/lib/stripe'
-import { Payment, Lottery } from '@/lib/types'
+import { Payment } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -25,19 +24,11 @@ export async function POST(request: NextRequest) {
 
   if (event.type === 'payment_intent.succeeded') {
     const paymentIntent = event.data.object
-    const { lotteryId } = paymentIntent.metadata
 
     await db.collection<Payment>('payments').updateOne(
       { stripePaymentIntentId: paymentIntent.id },
       { $set: { status: 'completed', updatedAt: new Date() } }
     )
-
-    if (lotteryId) {
-      await db.collection<Lottery>('lotteries').updateOne(
-        { _id: new ObjectId(lotteryId) },
-        { $inc: { totalTicketsSold: 1 }, $set: { updatedAt: new Date() } }
-      )
-    }
   } else if (event.type === 'payment_intent.payment_failed') {
     const paymentIntent = event.data.object
 
