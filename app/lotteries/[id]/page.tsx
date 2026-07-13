@@ -49,7 +49,7 @@ export default async function LotteryPage({
     ticketPriceFormatted: fmtCents(lottery.ticketPrice),
     numberOfNumbers: lottery.numberOfNumbers,
     status: lottery.status,
-    totalTicketsSold: lottery.totalTicketsSold,
+    totalTicketsSold: soldTickets.length,
     winningNumber: lottery.winningNumber,
     endDateFormatted: fmtDate(lottery.endDate),
     soldNumbers,

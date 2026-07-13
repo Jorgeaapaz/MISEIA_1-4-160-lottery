@@ -1,6 +1,7 @@
 import Link from 'next/link'
+import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/db'
-import { Lottery } from '@/lib/types'
+import { Lottery, Ticket } from '@/lib/types'
 
 function fmtCents(cents: number) {
   return (cents / 100).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
@@ -31,6 +32,16 @@ export default async function LotteriesPage() {
     .find({ status: { $in: ['pending', 'active'] } })
     .sort({ endDate: 1 })
     .toArray()
+
+  const soldCounts = await db
+    .collection<Ticket>('tickets')
+    .aggregate<{ _id: ObjectId; count: number }>([
+      { $match: { lotteryId: { $in: lotteries.map((l) => l._id!) } } },
+      { $group: { _id: '$lotteryId', count: { $sum: 1 } } },
+    ])
+    .toArray()
+
+  const soldByLottery = new Map(soldCounts.map((s) => [s._id.toString(), s.count]))
 
   return (
     <div className="page-container">
@@ -95,7 +106,7 @@ export default async function LotteriesPage() {
                     {[
                       { label: 'Precio boleto', value: fmtCents(l.ticketPrice) },
                       { label: 'Números', value: `0 – ${l.numberOfNumbers - 1}` },
-                      { label: 'Boletos vendidos', value: l.totalTicketsSold },
+                      { label: 'Boletos vendidos', value: soldByLottery.get(l._id!.toString()) ?? 0 },
                       { label: 'Sorteo', value: fmtDate(l.endDate) },
                     ].map((d) => (
                       <div key={d.label}>

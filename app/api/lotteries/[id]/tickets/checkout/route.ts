@@ -104,10 +104,6 @@ export async function POST(
 
     await db.collection<Payment>('payments').insertOne(payment)
 
-    await db
-      .collection<Lottery>('lotteries')
-      .updateOne({ _id: new ObjectId(id) }, { $inc: { totalTicketsSold: 1 }, $set: { updatedAt: now } })
-
     return Response.json({
       paymentIntentId: paymentIntent.id,
       clientSecret: paymentIntent.client_secret,

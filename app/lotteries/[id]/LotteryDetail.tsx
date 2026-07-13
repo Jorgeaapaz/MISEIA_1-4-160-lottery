@@ -34,6 +34,7 @@ function CheckoutForm({ lotteryId, selectedNumber, amount, onSuccess }: {
   const stripe = useStripe()
   const elements = useElements()
   const { token } = useGlobal()
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -66,6 +67,7 @@ function CheckoutForm({ lotteryId, selectedNumber, amount, onSuccess }: {
     }
 
     if (paymentIntent?.status === 'succeeded') {
+      router.refresh()
       onSuccess()
     }
 

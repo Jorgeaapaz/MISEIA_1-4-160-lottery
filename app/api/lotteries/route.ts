@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
-import { Lottery } from '@/lib/types'
+import { Lottery, Ticket } from '@/lib/types'
 
 export async function GET() {
   try {
@@ -13,6 +13,16 @@ export async function GET() {
       .sort({ endDate: 1 })
       .toArray()
 
+    const soldCounts = await db
+      .collection<Ticket>('tickets')
+      .aggregate<{ _id: ObjectId; count: number }>([
+        { $match: { lotteryId: { $in: lotteries.map((l) => l._id!) } } },
+        { $group: { _id: '$lotteryId', count: { $sum: 1 } } },
+      ])
+      .toArray()
+
+    const soldByLottery = new Map(soldCounts.map((s) => [s._id.toString(), s.count]))
+
     return Response.json(
       lotteries.map((l) => ({
         id: l._id!.toString(),
@@ -22,7 +32,7 @@ export async function GET() {
         ticketPrice: l.ticketPrice,
         numberOfNumbers: l.numberOfNumbers,
         status: l.status,
-        totalTicketsSold: l.totalTicketsSold,
+        totalTicketsSold: soldByLottery.get(l._id!.toString()) ?? 0,
       }))
     )
   } catch {

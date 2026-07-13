@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
-import { Lottery } from '@/lib/types'
+import { Lottery, Ticket } from '@/lib/types'
 
 export async function GET(
   _request: NextRequest,
@@ -20,6 +20,10 @@ export async function GET(
       return Response.json({ error: 'Lottery not found' }, { status: 404 })
     }
 
+    const totalTicketsSold = await db
+      .collection<Ticket>('tickets')
+      .countDocuments({ lotteryId: lottery._id })
+
     return Response.json({
       id: lottery._id!.toString(),
       name: lottery.name,
@@ -28,7 +32,7 @@ export async function GET(
       ticketPrice: lottery.ticketPrice,
       numberOfNumbers: lottery.numberOfNumbers,
       status: lottery.status,
-      totalTicketsSold: lottery.totalTicketsSold,
+      totalTicketsSold,
       winningNumber: lottery.winningNumber,
     })
   } catch {

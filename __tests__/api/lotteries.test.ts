@@ -6,7 +6,9 @@
 const mockToArray = jest.fn()
 const mockSort = jest.fn().mockReturnValue({ toArray: mockToArray })
 const mockFind = jest.fn().mockReturnValue({ sort: mockSort })
-const mockCollection = jest.fn().mockReturnValue({ find: mockFind })
+const mockAggToArray = jest.fn()
+const mockAggregate = jest.fn().mockReturnValue({ toArray: mockAggToArray })
+const mockCollection = jest.fn().mockReturnValue({ find: mockFind, aggregate: mockAggregate })
 const mockGetDb = jest.fn().mockResolvedValue({ collection: mockCollection })
 
 jest.mock('../../lib/db', () => ({ getDb: mockGetDb }))
@@ -34,10 +36,12 @@ describe('GET /api/lotteries', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockGetDb.mockResolvedValue({ collection: mockCollection })
-    mockCollection.mockReturnValue({ find: mockFind })
+    mockCollection.mockReturnValue({ find: mockFind, aggregate: mockAggregate })
     mockFind.mockReturnValue({ sort: mockSort })
     mockSort.mockReturnValue({ toArray: mockToArray })
     mockToArray.mockResolvedValue(mockLotteries)
+    mockAggregate.mockReturnValue({ toArray: mockAggToArray })
+    mockAggToArray.mockResolvedValue([{ _id: { toString: () => 'lottery1' }, count: 3 }])
   })
 
   it('returns 200 with list of lotteries', async () => {
